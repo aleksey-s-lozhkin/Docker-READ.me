@@ -1320,10 +1320,10 @@ ___
 |ADD|	Редко (вместо COPY)	|ADD archive.tar.gz /tmp/|
 
 ___
-## Бонус
+## Примеры `Dockerfile`
 
-### 📦 Вариант 1: pip + requirements.txt
-**Dockerfile**
+### 📦 Вариант 1: `pip` + `requirements.txt`
+`Dockerfile`
 ```dockerfile
 FROM python:3.13-slim-bookworm
 
@@ -1378,7 +1378,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
 ```
 
-**requirements.txt**
+`requirements.txt`
 ```text
 Django==5.1.7
 djangorestframework==3.15.2
@@ -1394,8 +1394,8 @@ django-celery-beat==2.7.0
 flower==2.0.1
 gunicorn==23.0.0
 ```
-### 📦 Вариант 2: Poetry
-**Dockerfile**
+### 📦 Вариант 2: `Poetry`
+`Dockerfile`
 ```dockerfile
 FROM python:3.13-slim-bookworm
 
@@ -1455,7 +1455,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 # CMD для запуска приложения
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
 ```
-**pyproject.toml**
+`pyproject.toml`
 ```toml
 [tool.poetry]
 name = "myproject"
@@ -1488,6 +1488,7 @@ flake8 = "^7.1.1"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 ```
+## Пример `entrypoint.sh`
 ### docker/entrypoint.sh (одинаков для обоих вариантов)
 ```bash
 #!/bin/bash
@@ -1531,7 +1532,8 @@ echo "=== Entrypoint: Done ==="
 # Запускаем команду из CMD
 exec "$@"
 ```
-### 🐳 docker-compose.yml (общий для обоих вариантов)
+## Пример `docker-compose.yml`
+### 🐳 `docker-compose.yml` (общий для обоих вариантов)
 ```yaml
 # =============================================================================
 # docker-compose.yml - Оркестрация микросервисов для Django-проекта
@@ -2117,6 +2119,906 @@ networks:
     #     - subnet: 172.20.0.0/16
     #       gateway: 172.20.0.1
 ```
+
+## Docker Compose команды и параметры
+
+### Базовые команды Docker Compose
+### 📌 docker compose up
+**Описание:** Запускает все сервисы, описанные в docker-compose.yml
+
+**Синтаксис:**
+
+```bash
+docker compose up [ОПЦИИ] [СЕРВИС...]
+```
+**Основные опции:**
+
+|Опция	|Описание	|Пример|
+|-------|-----------|------|
+|-d, --detach	|Запуск в фоновом режиме	|docker compose up -d|
+|--build	| образы перед запуском	|docker compose up --build|
+|--force-recreate	|Принудительно пересоздать контейнеры	|docker compose up --force-recreate|
+|--no-deps	|Не запускать зависимости	|docker compose up --no-deps django|
+|--scale	|Масштабировать сервис	|docker compose up --scale django=3|
+|--timeout, -t	| остановки (сек)	|docker compose up -t 30|
+|--no-build	|Не собирать образы	|docker compose up --no-build|
+|--renew-anon-volumes	|Пересоздать анонимные тома	|docker compose up --renew-anon-volumes|
+|--remove-orphans	|Удалить контейнеры не из compose	|docker compose up --remove-orphans|
+
+**Когда использовать:**
+
+- ✅ Первый запуск проекта
+
+- ✅ После изменения кода/конфигов
+
+- ✅ При разработке (без -d)
+
+- ✅ Для перезапуска всех сервисов
+
+**Примеры:**
+
+```bash
+# Запуск в фоне с пересборкой
+docker compose up -d --build
+
+# Запуск только Django с пересозданием
+docker compose up -d --force-recreate django
+
+# Запуск с масштабированием
+docker compose up -d --scale django=3 --scale celery=5
+
+# Запуск в интерактивном режиме (видим логи)
+docker compose up
+
+# Запуск конкретного сервиса
+docker compose up django postgres
+```
+**Важно:**
+
+- Без -d логи выводятся в терминал
+
+- Ctrl+C останавливает все контейнеры (в интерактивном режиме)
+
+- Образы собираются только если нет кэша или есть изменения
+
+### 📌 docker compose down
+**Описание:** Останавливает и удаляет контейнеры, сети
+
+**Синтаксис:**
+
+```bash
+docker compose down [ОПЦИИ]
+```
+**Основные опции:**
+
+|Опция	|Описание	|Пример|
+|-------|-----------|------|
+|--volumes, -v	|Удалить именованные тома	|docker compose down -v|
+|--rmi	|Удалить образы (all, local)	|docker compose down --rmi all|
+|--remove-orphans	|Удалить orphan-контейнеры	|docker compose down --remove-orphans|
+|--timeout, -t	|Таймаут перед принудительным завершением	|docker compose down -t 30|
+**Когда использовать:**
+
+- ✅ Полная очистка окружения
+
+- ✅ Смена конфигурации
+
+- ✅ Освобождение ресурсов
+
+- ⚠️ Осторожно с -v - удаляет данные!
+
+**Примеры:**
+
+```bash
+# Стандартная остановка (тома сохраняются)
+docker compose 
+
+# Полная очистка (удалить всё)
+docker compose down -v --rmi all
+
+# Удалить всё, кроме образов
+docker compose down -v
+
+```
+**Предупреждение:**
+
+-v удаляет данные PostgreSQL и Redis!
+
+Используйте с осторожностью в production
+
+### 📌 docker compose start
+**Описание:** Запускает остановленные контейнеры
+
+**Синтаксис:**
+
+``` bash
+docker compose start [СЕРВИС...]
+```
+**Когда использовать:**
+
+- ✅ После остановки (docker compose stop)
+
+- ✅ Контейнеры уже созданы, нужно запустить
+
+**Примеры:**
+
+```bash
+# Запустить все сервисы
+docker compose start
+
+# Запустить только Django
+docker compose start django
+```
+**Отличие от `up`:**
+
+`start` - только запускает существующие контейнеры
+
+`up` - создает/пересоздает контейнеры
+
+### 📌 docker compose stop
+**Описание:** Останавливает контейнеры без удаления
+
+**Синтаксис:**
+
+```bash
+docker compose stop [ОПЦИИ] [СЕРВИС...]
+```
+**Основные опции:**
+
+- --timeout, -t - таймаут остановки (сек)
+
+**Когда использовать:**
+
+- ✅ Временная остановка
+
+- ✅ Сохранение состояния
+
+- ✅ Перезапуск через start
+
+**Примеры:**
+
+``` bash
+# Остановить все
+docker compose stop
+
+# Остановить с таймаутом 30 сек
+docker compose stop -t 30
+
+# Остановить конкретный сервис
+docker compose stop django
+```
+**Важно:** Данные сохраняются (тома не удаляются)
+
+### Управление контейнерами
+### 📌 docker compose ps
+**Описание:** 
+
+Показывает статус контейнеров
+
+**Синтаксис:**
+
+```bash
+docker compose ps [ОПЦИИ] [СЕРВИС...]
+```
+**Основные опции:**
+
+- -a, --all - показать все контейнеры (включая остановленные)
+
+- --format - формат вывода (table, json, yaml)
+
+- --filter - фильтрация по условиям
+
+- -q, --quiet - только ID контейнеров
+
+**Когда использовать:**
+
+- ✅ Проверка статуса сервисов
+
+- ✅ Диагностика проблем
+
+- ✅ Получение ID контейнеров
+
+**Примеры:**
+
+```bash
+# Стандартный вывод
+docker compose ps
+
+# Только запущенные
+docker compose ps
+
+# Все контейнеры (включая остановленные)
+docker compose ps -a
+
+# Только ID контейнеров
+docker compose ps -q
+
+# В формате JSON
+docker compose ps --format json
+
+# Фильтрация по статусу
+docker compose ps --filter "status=running"
+```
+**Вывод:**
+
+```text
+NAME      COMMAND                  SERVICE   STATUS        PORTS
+django    "gunicorn --bind 0.0…"   django    running       0.0.0.0:8000->8000/tcp
+postgres  "docker-entrypoint.s…"   postgres  healthy       0.0.0.0:5432->5432/tcp
+redis     "docker-entrypoint.s…"   redis     healthy       0.0.0.0:6379->6379/tcp
+```
+### 📌 docker compose exec
+**Описание:** Выполняет команду внутри работающего контейнера
+
+**Синтаксис:**
+
+```bash
+docker compose exec [ОПЦИИ] СЕРВИС КОМАНДА [АРГУМЕНТЫ]
+```
+**Основные опции:**
+
+|Опция	|Описание	|Пример|
+|-------|-----------|------|
+|-d, --detach	|Запуск в фоне	|docker compose exec -d django python manage.py some_task|
+|--no-TTY	|Отключить псевдо-TTY	|docker compose exec --no-TTY django ls|
+|--privileged	|Дать привилегии	|docker compose exec --privileged django ...|
+|-u, --user	|Выполнить от имени пользователя	|docker compose exec -u root django bash|
+|-w, --workdir	|Рабочая директория	|docker compose exec -w /app django python manage.py migrate|
+|-e, --env	|Установить переменные	|docker compose exec -e DEBUG=1 django python manage.py runserver|
+|--index	|Индекс контейнера (при масштабировании)	|docker compose exec --index=1 django bash|
+**Когда использовать:**
+
+- ✅ Выполнение команд в контейнере
+
+- ✅ Отладка и диагностика
+
+- ✅ Управление приложением (миграции, создание суперпользователя)
+
+- ✅ Просмотр содержимого контейнера
+
+**Примеры:**
+
+```bash
+# Войти в shell контейнера Django
+docker compose exec django bash
+docker compose exec django sh  # если bash нет
+
+# Выполнить миграции
+docker compose exec django python manage.py migrate
+
+# Создать суперпользователя
+docker compose exec django python manage.py createsuperuser
+
+# Собрать статику
+docker compose exec django python manage.py collectstatic --noinput
+
+# Выполнить команду от имени root
+docker compose exec -u root django apt-get update
+
+# Запустить Django shell
+docker compose exec django python manage.py shell
+
+# Выполнить в определенной директории
+docker compose exec -w /app/scripts django python deploy.py
+
+# Проверить переменные окружения в контейнере
+docker compose exec django env
+
+# Подключиться к БД через контейнер Django
+docker compose exec django psql -U postgres -h postgres -d mydb
+
+# Выполнить команду в Celery
+docker compose exec celery celery -A config inspect active
+
+# Запустить Flower с конкретным индексом
+docker compose exec --index=1 flower celery -A config flower
+```
+**Важно:**
+
+- Команда выполняется в работающем контейнере
+
+- Сервис должен быть запущен (docker compose up -d)
+
+- Для интерактивных команд нужен TTY (по умолчанию включен)
+
+- Используйте полные пути к командам
+
+### 📌 docker compose logs
+**Описание: Просмотр логов контейнеров**
+
+**Синтаксис:**
+
+```bash
+docker compose logs [ОПЦИИ] [СЕРВИС...]
+```
+**Основные опции:**
+
+|Опция	|Описание	|Пример|
+|-------|-----------|------|
+|-f, --follow	|Следить за новыми сообщениями	|docker compose logs -f|
+|--tail	|Количество строк с конца	|docker compose logs --tail=100|
+|--since	|Логи за время (1h, 30m)	|docker compose logs --since=1h|
+|--until	|Логи до времени	|docker compose logs --until=2024-01-01T00:00:00Z|
+|--no-color	|Без цветов	|docker compose logs --no-color|
+|--timestamps	|Добавить временные метки	|docker compose logs --timestamps|
+|-n, --tail	|Количество строк (сокращение)	|docker compose logs -n 50|
+**Когда использовать:**
+
+- ✅ Отладка ошибок
+
+- ✅ Мониторинг работы
+
+- ✅ Проверка логов после развертывания
+
+**Примеры:**
+
+```bash
+# Все логи
+docker compose logs
+
+# Логи конкретного сервиса
+docker compose logs django
+docker compose logs postgres
+docker compose logs nginx
+
+# Последние 100 строк
+docker compose logs --tail=100
+
+# Следить за логами в реальном времени
+docker compose logs -f
+
+# Логи за последний час
+docker compose logs --since=1h
+
+# Логи Django с метками времени
+docker compose logs --timestamps django
+
+# Логи за определенный период
+docker compose logs --since="2024-01-01T00:00:00Z" --until="2024-01-02T00:00:00Z"
+
+# Сохранить логи в файл
+docker compose logs > logs.txt
+
+# Логи нескольких сервисов
+docker compose logs django nginx redis
+
+# Комбинированные опции
+docker compose logs -f --tail=50 django
+```
+### Управление образами
+### 📌 docker compose build
+**Описание:** Собирает образы для сервисов
+
+**Синтаксис:**
+
+```bash
+docker compose build [ОПЦИИ] [СЕРВИС...]
+```
+**Основные опции:**
+
+|Опция	|Описание	|Пример|
+|-------|-----------|------|
+|--no-cache	|Не использовать кэш Docker	|docker compose build --no-cache|
+|--pull	|Всегда пытаться загрузить базовый образ	|docker compose build --pull|
+|--build-arg	|Передать аргументы сборки	|docker compose build --build-arg VERSION=1.2.3|
+|--progress	|Тип вывода (auto, plain, tty)	|docker compose build --progress=plain|
+**Когда использовать:**
+
+- ✅ После изменения Dockerfile
+
+- ✅ После изменения зависимостей
+
+- ✅ Перед деплоем
+
+- ✅ При обновлении базового образа
+
+**Примеры:**
+
+```bash
+# Собрать все образы
+docker compose build
+
+# Собрать конкретный сервис
+docker compose build django
+
+# Собрать без кэша
+docker compose build --no-cache
+
+# Собрать с принудительным pull базового образа
+docker compose build --pull
+
+# Собрать с аргументами
+docker compose build --build-arg ENVIRONMENT=production
+
+# Собрать с verbose выводом
+docker compose build --progress=plain
+```
+### 📌 docker compose pull
+**Описание:** Скачивает образы для сервисов
+
+**Синтаксис:**
+
+```bash
+docker compose pull [ОПЦИИ] [СЕРВИС...]
+```
+**Основные опции:**
+
+- --ignore-pull-failures - игнорировать ошибки pull
+
+- --policy - политика загрузки (missing, always)
+
+- --no-parallel - последовательная загрузка
+
+- -q, --quiet - минимальный вывод
+
+**Когда использовать:**
+
+- ✅ Обновление образов из реестра
+
+- ✅ Предварительная загрузка для быстрого старта
+
+- ✅ CI/CD пайплайны
+
+**Примеры:**
+
+```bash
+# Скачать все образы
+docker compose pull
+
+# Скачать конкретный сервис
+docker compose pull postgres
+
+# Скачать только отсутствующие
+docker compose pull --policy=missing
+
+# Без параллельной загрузки
+docker compose pull --no-parallel
+```
+**Отличие от build:**
+
+- pull - загружает готовые образы из реестра
+
+- build - собирает образы локально
+
+### 📌 docker compose push
+**Описание:** 
+
+Загружает собранные образы в реестр
+
+**Синтаксис:**
+
+```bash
+docker compose push [ОПЦИИ] [СЕРВИС...]
+```
+**Основные опции:**
+
+- --ignore-push-failures - игнорировать ошибки
+
+- --no-parallel - последовательная загрузка
+
+**Когда использовать:**
+
+- ✅ CI/CD пайплайны
+
+- ✅ После успешной сборки
+
+- ✅ Деплой в production
+
+**Примеры:**
+
+```bash
+# Загрузить все образы
+docker compose push
+
+# Загрузить конкретный сервис
+docker compose push django
+```
+### Работа с томами
+### 📌 docker compose volume
+**Описание:** 
+
+Управление томами Compose
+
+**Синтаксис:**
+
+```bash
+docker compose volume [КОМАНДА] [ОПЦИИ]
+```
+**Подкоманды:**
+
+- ls - список томов
+
+- rm - удалить тома
+
+- inspect - информация о томе
+
+- prune - удалить неиспользуемые тома
+
+**Примеры:**
+
+```bash
+# Список всех томов
+docker compose volume ls
+
+# Информация о томе
+docker compose volume inspect myapp_static
+
+# Удалить конкретный том
+docker compose volume rm myapp_logs
+
+# Удалить все неиспользуемые тома
+docker compose volume prune
+
+# Принудительное удаление
+docker compose volume rm -f postgres_data
+```
+**Важно:** Тома сохраняют данные между перезапусками!
+
+### Сети и порты
+### 📌 docker compose network
+**Описание:** 
+
+Управление сетями Compose
+
+**Синтаксис:**
+
+```bash
+docker compose network [КОМАНДА] [ОПЦИИ]
+```
+**Подкоманды:**
+
+- ls - список сетей
+
+- rm - удалить сеть
+
+- inspect - информация о сети
+
+- prune - удалить неиспользуемые сети
+
+**Примеры:**
+
+```bash
+# Список сетей
+docker compose network ls
+
+# Информация о сети
+docker compose network inspect myapp_network
+
+# Удаление сети
+docker compose network rm myapp_network
+```
+### 📌 docker compose port
+**Описание:** 
+
+Показывает публичный порт сервиса
+
+**Синтаксис:**
+
+```bash
+docker compose port [ОПЦИИ] СЕРВИС ЧАСТНЫЙ_ПОРТ
+```
+**Пример:**
+
+```bash
+# Какой порт на хосте для порта 8000 контейнера
+docker compose port django 8000
+# Вывод: 0.0.0.0:8000
+```
+### Переменные окружения
+### 📌 docker compose config
+**Описание:** Проверяет и отображает конфигурацию Compose
+
+**Синтаксис:**
+
+```bash
+docker compose config [ОПЦИИ]
+```
+**Основные опции:**
+
+- --format - формат вывода (yaml, json)
+
+- --no-interpolate - не заменять переменные
+
+- --quiet - без вывода предупреждений
+
+**Когда использовать:**
+
+- ✅ Проверка синтаксиса
+
+- ✅ Просмотр итоговой конфигурации
+
+- ✅ Отладка переменных окружения
+
+- ✅ Валидация перед деплоем
+
+**Примеры:**
+
+```bash
+# Проверить синтаксис и показать конфигурацию
+docker compose config
+
+# Показать в JSON формате
+docker compose config --format json
+
+# Показать без подстановки переменных
+docker compose config --no-interpolate
+
+# Тихо (только ошибки)
+docker compose config --quiet
+```
+### Првоерка состояния (Healthcheck)
+### 📌 Проверка статуса здоровья
+**Описание:** 
+
+Проверка здоровья сервисов через Compose
+
+**Команды:**
+
+```bash
+# Показать статус здоровья всех сервисов
+docker compose ps --filter "status=running" | grep healthy
+
+# Проверить конкретный сервис
+docker compose ps --format json | jq '.[] | select(.Service=="django")'
+
+# Подождать готовности всех сервисов
+docker compose up -d && docker compose ps | grep unhealthy
+```
+**Пример скрипта ожидания:**
+
+```bash
+#!/bin/bash
+# wait-for-healthy.sh
+
+echo "Ожидание готовности сервисов..."
+while true; do
+    STATUS=$(docker compose ps --format json | jq -r '.[] | select(.Health=="unhealthy")')
+    if [ -z "$STATUS" ]; then
+        echo "Все сервисы здоровы!"
+        break
+    fi
+    echo "Ожидаем сервисы..."
+    sleep 5
+done
+```
+### Полезные комбинации
+### 🔧 Полный цикл разработки
+```bash
+# 1. Остановить всё и очистить
+docker compose down -v
+
+# 2. Пересобрать образы
+docker compose build --no-cache
+
+# 3. Запустить в фоне
+docker compose up -d
+
+# 4. Проверить статус
+docker compose ps
+
+# 5. Смотреть логи
+docker compose logs -f
+
+# 6. Выполнить миграции
+docker compose exec django python manage.py migrate
+
+# 7. Создать суперпользователя
+docker compose exec django python manage.py createsuperuser
+
+# 8. Собрать статику
+docker compose exec django python manage.py collectstatic --noinput
+```
+### 🔍 Отладка
+```bash
+# Зайти в контейнер Django
+docker compose exec django bash
+
+# Проверить переменные окружения
+docker compose exec django env | grep POSTGRES
+
+# Проверить доступность БД
+docker compose exec django python manage.py dbshell
+
+# Проверить подключение к Redis
+docker compose exec django redis-cli -h redis ping
+
+# Просмотр логов с ошибками
+docker compose logs --tail=100 | grep ERROR
+
+# Проверка занятого места
+docker compose exec django df -h
+```
+### 🚀 Работа с несколькими окружениями
+```bash
+# Использование разных compose файлов
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Переопределение переменных
+docker compose -f docker-compose.yml -f docker-compose.override.yml up
+
+# Использование профилей
+docker compose --profile monitoring up -d
+docker compose --profile dev up -d
+```
+### 🧹 Очистка и обслуживание
+```bash
+# Остановка всех контейнеров
+docker compose down
+
+# Удаление всех томов
+docker compose down -v
+
+# Удаление всех образов
+docker compose down --rmi all
+
+# Полная очистка
+docker compose down -v --rmi all --remove-orphans
+
+# Очистка Docker системы
+docker system prune -af
+docker volume prune -f
+docker network prune -f
+```
+### 📊 Мониторинг
+```bash
+# Просмотр статистики
+docker compose stats
+
+# Только конкретный сервис
+docker compose stats django
+
+# Просмотр использования ресурсов
+docker compose top
+
+# Просмотр процессов в контейнере
+docker compose exec django ps aux
+```
+### 💾 Бэкап и восстановление
+```bash
+# Бэкап БД
+docker compose exec postgres pg_dump -U postgres mydb > backup.sql
+
+# Восстановление БД
+docker compose exec -T postgres psql -U postgres mydb < backup.sql
+
+# Бэкап томов
+docker run --rm -v myapp_postgres:/data -v $(pwd):/backup alpine tar czf /backup/postgres-backup.tar.gz -C /data .
+
+# Восстановление томов
+docker run --rm -v myapp_postgres:/data -v $(pwd):/backup alpine tar xzf /backup/postgres-backup.tar.gz -C /data
+```
+### 🔄 Обновление без даунтайма
+```bash
+# 1. Пересобрать образы
+docker compose build django
+
+# 2. Создать новые контейнеры (не останавливая старые)
+docker compose up -d --no-deps --build django
+
+# 3. Проверить логи
+docker compose logs -f django
+
+# 4. Если всё ок - удалить старый контейнер
+docker compose rm -f django
+```
+### 🏷️ Работа с конкретными сервисами
+```bash
+# Перезапуск конкретного сервиса
+docker compose restart django
+
+# Остановка конкретного сервиса
+docker compose stop celery
+
+# Удаление конкретного сервиса
+docker compose rm -f celery
+
+# Масштабирование сервиса
+docker compose up -d --scale celery=5
+```
+### 📝 Просмотр информации
+```bash
+# Подробная информация о всех контейнерах
+docker compose ps -a
+
+# Информация о конкретном контейнере
+docker inspect django
+
+# Сетевые подключения
+docker compose exec django netstat -tulpn
+
+# IP адреса контейнеров
+docker compose exec django ping postgres
+docker compose exec django ping redis
+```
+### ⚡ Быстрые команды для Django
+```bash
+# Django shell
+docker compose exec django python manage.py shell
+
+# Очистка кэша
+docker compose exec django python manage.py clear_cache
+
+# Проверка модели
+docker compose exec django python manage.py check
+
+# Тесты
+docker compose exec django python manage.py test
+
+# Создание миграций
+docker compose exec django python manage.py makemigrations
+
+# Применение миграций
+docker compose exec django python manage.py migrate
+
+# Django admin
+docker compose exec django python manage.py createsuperuser
+
+# Загрузка данных
+docker compose exec django python manage.py loaddata fixtures.json
+
+# Дамп данных
+docker compose exec django python manage.py dumpdata > data.json
+```
+### 🐘 Команды для PostgreSQL
+```bash
+# Подключение к psql
+docker compose exec postgres psql -U postgres -d mydb
+
+# Список БД
+docker compose exec postgres psql -U postgres -c "\l"
+
+# Список таблиц
+docker compose exec postgres psql -U postgres -d mydb -c "\dt"
+
+# Размер БД
+docker compose exec postgres psql -U postgres -d mydb -c "SELECT pg_database_size('mydb')"
+
+# Создание БД
+docker compose exec postgres psql -U postgres -c "CREATE DATABASE newdb"
+
+# Удаление БД
+docker compose exec postgres psql -U postgres -c "DROP DATABASE newdb"
+```
+### 🔴 Команды для Redis
+```bash
+# Подключение к Redis CLI
+docker compose exec redis redis-cli
+
+# Проверка статуса
+docker compose exec redis redis-cli ping
+
+# Просмотр всех ключей
+docker compose exec redis redis-cli KEYS '*'
+
+# Просмотр использования памяти
+docker compose exec redis redis-cli INFO memory
+
+# Мониторинг в реальном времени
+docker compose exec redis redis-cli MONITOR
+
+# Очистка кэша
+docker compose exec redis redis-cli FLUSHALL
+```
+### 🎯 Команды для Celery
+```bash
+# Просмотр активных задач
+docker compose exec celery celery -A config inspect active
+
+# Просмотр зарезервированных задач
+docker compose exec celery celery -A config inspect reserved
+
+# Просмотр зарегистрированных задач
+docker compose exec celery celery -A config inspect registered
+
+# Статистика воркеров
+docker compose exec celery celery -A config inspect stats
+
+# Очистка очередей
+docker compose exec celery celery -A config purge -f
+
+# Запуск задачи вручную
+docker compose exec celery celery -A config call myapp.tasks.send_email --args='["user@example.com"]'
+```
 ### 📁 Структура проекта
 ```text
 myproject/
@@ -2201,28 +3103,6 @@ htmlcov
 .pytest_cache
 .mypy_cache
 .ruff_cache
-```
-### 🚀 Запуск
-**Разработка**
-```bash
-docker-compose up -d
-docker-compose logs -f django
-```
-**Продакшен**
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
-**Миграции (если не через entrypoint)**
-```bash
-docker-compose exec django python manage.py migrate
-```
-**Сбор статики**
-```bash
-docker-compose exec django python manage.py collectstatic
-```
-**Создание суперпользователя**
-```bash
-docker-compose exec django python manage.py createsuperuser
 ```
 ___
 ## Продолжение следует...
